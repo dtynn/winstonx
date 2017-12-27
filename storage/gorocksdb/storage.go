@@ -4,7 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/dtynn/winston/storage"
+	"github.com/dtynn/winston/pkg/storage"
 	"github.com/tecbot/gorocksdb"
 )
 
