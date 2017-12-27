@@ -1,6 +1,7 @@
 package gorocksdb
 
 import (
+	"github.com/dtynn/winston/pkg/storage"
 	"github.com/tecbot/gorocksdb"
 )
 
@@ -11,6 +12,8 @@ type Iterator struct {
 	opts *gorocksdb.ReadOptions
 	iter *gorocksdb.Iterator
 
+	start []byte
+
 	moved bool
 	valid bool
 }
@@ -18,13 +21,33 @@ type Iterator struct {
 // First move to first key
 func (i *Iterator) First() {
 	i.moved = true
-	i.iter.SeekToFirst()
+
+	if i.start == nil {
+		i.iter.SeekToFirst()
+		i.valid = i.iter.Valid()
+		return
+	}
+
+	i.Seek(i.start)
 	i.valid = i.iter.Valid()
+}
+
+// Last move to the last key
+func (i *Iterator) Last() {
+	i.moved = true
+
+	i.iter.SeekToLast()
+	i.valid = i.iter.Valid() && storage.KeyInRange(i.key(), i.start, nil)
 }
 
 // Seek move to key greater than or equal seek
 func (i *Iterator) Seek(seek []byte) {
 	i.moved = true
+
+	if !storage.KeyInRange(seek, i.start, nil) {
+		seek = i.start
+	}
+
 	i.iter.Seek(seek)
 	i.valid = i.iter.Valid()
 }
@@ -33,11 +56,18 @@ func (i *Iterator) Seek(seek []byte) {
 func (i *Iterator) Next() bool {
 	if !i.moved {
 		i.First()
-	} else {
-		i.iter.Next()
+		return i.valid
 	}
 
+	i.iter.Next()
 	i.valid = i.iter.Valid()
+	return i.valid
+}
+
+// Prev move the the previous key
+func (i *Iterator) Prev() bool {
+	i.iter.Prev()
+	i.valid = i.iter.Valid() && storage.KeyInRange(i.key(), i.start, nil)
 	return i.valid
 }
 
@@ -47,6 +77,10 @@ func (i *Iterator) Key() []byte {
 		return nil
 	}
 
+	return i.key()
+}
+
+func (i *Iterator) key() []byte {
 	s := i.iter.Key()
 	if s == nil {
 		return nil
@@ -76,11 +110,6 @@ func (i *Iterator) Value() []byte {
 // Valid return current valid
 func (i *Iterator) Valid() bool {
 	return i.valid
-}
-
-// UpdateValid update valid
-func (i *Iterator) UpdateValid(valid bool) {
-	i.valid = valid
 }
 
 // Err return iter error
