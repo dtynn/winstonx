@@ -29,7 +29,6 @@ func (i *Iterator) First() {
 	}
 
 	i.Seek(i.start)
-	i.valid = i.iter.Valid()
 }
 
 // Last move to the last key
